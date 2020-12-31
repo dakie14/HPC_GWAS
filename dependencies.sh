@@ -11,3 +11,4 @@ pip install patsy==0.5.1
 pip install lxml==4.5.2
 pip install flask==1.1.2
 pip install requests==2.24.0
+pip install click==7.1.2
