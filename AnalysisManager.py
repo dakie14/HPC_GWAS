@@ -11,7 +11,7 @@ class AnalysisManager:
         self.__dbm = DatabaseManager(data_path)
         self.__chromosomes = chromosomes
         self.__seeks = {}
-        self.__covariates = self.__dbm.get("covariates")
+        self.__buffered_data = {}
 
         self.__prepare_data(snps_to_exclude)
 
@@ -25,8 +25,10 @@ class AnalysisManager:
             if len(seeks) > 0:
                 self.__seeks[str(c)] = seeks
 
-    def get_covariates(self):
-        return self.__covariates
+    def get_supplementary_data(self, name):
+        if name not in self.__buffered_data:
+            self.__buffered_data[name] = self.__dbm.get(name)
+        return self.__buffered_data[name]
 
     def get_batch(self, size):
         if len(self.__chromosomes) == 0:

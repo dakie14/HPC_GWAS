@@ -6,7 +6,7 @@ from itertools import chain
 ######  DATA_READERS  ######
 from PyBGEN import PyBGEN
 from Enumerators import Model as gm
-from Enumerators import Format, Family
+from Enumerators import Family
 
 ######  LOGGER  ######
 from ProcessLogger import ProcessLogger
@@ -21,9 +21,8 @@ from patsy import dmatrices
 logger = ProcessLogger("h")
 
 class GenotypeData(object):
-    def __init__(self, path, data_format, seeks=[], genetic_model=gm.Additive, samples=None):
+    def __init__(self, path, seeks, genetic_model=gm.Additive, samples=None):
         self.__samples = samples
-        self.__data_format = data_format
         self._genetic_model = genetic_model
         self.__path = path
         self.__seeks = seeks
@@ -37,16 +36,13 @@ class GenotypeData(object):
         ).iter_seeks(seeks)
 
     def get_iterator(self):
-        if self.__data_format == Format.BGEN:
-            if not self.__data_iter:
-                self.__data_iter = self.__open_bgen(self.__path, self._genetic_model, self.__seeks)
+        if not self.__data_iter:
+            self.__data_iter = self.__open_bgen(self.__path, self._genetic_model, self.__seeks)
 
-            for info, dosage in self.__data_iter:
-                snp_id = str(int(info.chrom)) + ":" + str(int(info.pos)) + "_" + str(info.a1) + "_" + str(info.a2)
-                df = pd.DataFrame({'id': self.__samples, 'dosage': dosage})
-                yield snp_id, df
-        else:
-            self.__data_iter = None
+        for info, dosage in self.__data_iter:
+            snp_id = str(int(info.chrom)) + ":" + str(int(info.pos)) + "_" + str(info.a1) + "_" + str(info.a2)
+            df = pd.DataFrame({'id': self.__samples, 'dosage': dosage})
+            yield snp_id, df
 
 class RegressionModel:
 
@@ -152,7 +148,9 @@ class ParallelResult:
             self.add(_id, result)
 
     def get(self, identifier):
-        return self.__result[identifier]
+        if identifier in self.__result:
+            return self.__result[identifier]
+        return None
 
     def as_dict(self):
         return self.__result
@@ -174,23 +172,27 @@ def __glm_fit(covariates, model, family, data):
 
     return batch_results
 
-def parallel_glm(model, data_path, format, covariates, family, seeks=[], cores=cpu_count(), samples=None, genetic_model=gm.Additive):
+def parallel_glm(reg_model, data_path, covariates, family, seeks, cores=cpu_count(), samples=None, genetic_model=gm.Additive):
+
+    parallel_result = ParallelResult()
+
+    if len(seeks) == 0:
+        return parallel_result
 
     pool = Pool(cores)
     analysis = partial(
         __glm_fit,
         covariates,
-        model,
+        reg_model,
         family
     )
     batches = [seeks[_::cores] for _ in range(cores)]
 
     results = pool.map(
         analysis,
-        [GenotypeData(data_path, format, seeks=batch, genetic_model=genetic_model, samples=samples) for batch in batches]
+        [GenotypeData(data_path, batch, genetic_model=genetic_model, samples=samples) for batch in batches]
     )
 
-    parallel_result = ParallelResult()
     parallel_result.combine(results)
     return parallel_result
 

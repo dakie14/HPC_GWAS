@@ -3,7 +3,6 @@
 ENV=base
 set -eux
 
-pip install pyarrow==0.14.1
 pip install pandas==1.1.3
 pip install statsmodels==0.11.0
 pip install numpy==1.16.5

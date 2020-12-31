@@ -26,11 +26,6 @@ def parse_input():
                         type=str,
                         required=True)
 
-    parser.add_argument("--sample",
-                        help="Specify path to sample file",
-                        type=str,
-                        required=True)
-
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -40,15 +35,10 @@ if __name__ == "__main__":
     batch_size = args.bs if args.bs > 0 else cpu_count()*100
     model = args.model
     bgen_path = args.bgen
-    samples_path = args.sample
     manager = DataManager()
 
-    samples = pd.read_csv(samples_path, header=0, sep='\s+', skiprows=[1], usecols=["ID_1"])
-    samples['idx'] = samples.index
-    samples.rename(columns={"ID_1": "id"}, inplace=True)
-    samples = samples.sort_values(by=['idx'])["id"].tolist()
-
-    covariates = manager.get_covariates()
+    covariates = manager.get_supplementary_data("covariates")
+    samples = manager.get_supplementary_data("samples")["id"].to_list()
 
     while True:
         overall_batch_time = time.time()
@@ -65,10 +55,9 @@ if __name__ == "__main__":
         result = parallel_glm(
             model,
             data_path,
-            Format.BGEN,
             covariates,
             Family.Binomial,
-            seeks=seeks,
+            seeks,
             samples=samples
         )
 

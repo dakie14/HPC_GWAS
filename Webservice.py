@@ -32,10 +32,11 @@ app = Flask("__GWASServer__")
 def get_status():
     return app.make_null_session()
 
-@app.route('/covariates', methods=['GET'])
-def get_covariates():
+@app.route('/data', methods=['GET'])
+def get_supplementary_data():
     global manager
-    return manager.get_covariates().to_json(orient="records")
+    name = request.args.get("name")
+    return manager.get_supplementary_data(name).to_json(orient="records")
 
 
 @app.route('/batch', methods=['GET'])

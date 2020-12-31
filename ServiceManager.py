@@ -10,8 +10,8 @@ class ServiceManager:
     def get_batch(self, size):
         return self.analysis_manager.get_batch(size)
 
-    def get_covariates(self):
-        return self.analysis_manager.get_covariates()
+    def get_supplementary_data(self, name):
+        return self.analysis_manager.get_supplementary_data(name)
 
     def store_result(self, result):
         self.result_manager.store_result(result)

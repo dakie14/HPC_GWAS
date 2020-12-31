@@ -15,14 +15,14 @@ class DataManager:
         self.__logger = ProcessLogger("__DataManager__")
         requests.get(self.__server_url + "/status")
 
-    def get_covariates(self):
+    def get_supplementary_data(self, name):
         return pd.read_json(
-            requests.get(self.__server_url + "/covariates").text,
+            requests.get(self.__server_url + "/data", params={"name": name}).text,
             orient="records"
         )
 
     def get_batch(self, size):
-        r = requests.get(self.__server_url + "/batch", params={"batch_size":size})
+        r = requests.get(self.__server_url + "/batch", params={"batch_size": size})
         if r.status_code != 200:
             time.sleep(5)
             return self.get_batch(size)
