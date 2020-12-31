@@ -42,6 +42,8 @@ import numpy as np
 
 from six.moves import range
 
+from Enumerators import Model as gm
+
 try:
     import zstd
     HAS_ZSTD = True
@@ -63,11 +65,6 @@ logger = logging.getLogger(__name__)
 
 # The python version
 PYTHON_VERSION = sys.version_info.major
-
-class GeneticModel(enum.Enum):
-    Additive = 0
-    Dominant = 1
-    Recessive = 2
 
 class _Variant(object):
     __slots__ = ("name", "chrom", "pos", "a1", "a2")
@@ -107,7 +104,7 @@ class PyBGEN(object):
     """
 
     def __init__(self, fn, mode="r", prob_t=0.9, _skip_index=False, bgi=None,
-                 probs_only=False, genetic_model=GeneticModel.Additive):
+                 probs_only=False, genetic_model=gm.Additive):
         """Initializes a new PyBGEN instance."""
         # The mode
         self._mode = mode
@@ -503,11 +500,11 @@ class PyBGEN(object):
         dosage = 2 * probs[:, 2] + probs[:, 1]
 
         # Additive model
-        # if self._genetic_model == GeneticModel.Additive:
+        # if self._genetic_model == gm.Additive:
         #     # Constructing the dosage
 
         # Dominant model
-        if self._genetic_model == GeneticModel.Dominant:
+        if self._genetic_model == gm.Dominant:
             # Constructing the dosage
             dosage[np.isnan(dosage)] = float('inf')
             dosage = np.where(dosage < 0.5, 0.0, dosage)
@@ -515,7 +512,7 @@ class PyBGEN(object):
             dosage = np.where(dosage > 0, 1.0, dosage)
 
         # Recessive model
-        if self._genetic_model == GeneticModel.Recessive:
+        if self._genetic_model == gm.Recessive:
             # Constructing the dosage
             raise NotImplementedError("Recessive genetic model not implemented")
 
@@ -537,12 +534,12 @@ class PyBGEN(object):
         dosage = 2 * last_probs + probs[:, 1]
 
         # Additive model
-        # if self._genetic_model == GeneticModel.Additive:
+        # if self._genetic_model == gm.Additive:
         #     # Constructing the dosage
         #
 
         # Dominant model
-        if self._genetic_model == GeneticModel.Dominant:
+        if self._genetic_model == gm.Dominant:
             # Constructing the dosage
             dosage[np.isnan(dosage)] = float('inf')
             dosage = np.where(dosage < 0.5, 0.0, dosage)
@@ -550,7 +547,7 @@ class PyBGEN(object):
             dosage = np.where(dosage > 0, 1.0, dosage)
 
         # Recessive model
-        if self._genetic_model == GeneticModel.Recessive:
+        if self._genetic_model == gm.Recessive:
             # Constructing the dosage
             raise NotImplementedError("Recessive genetic model not implemented")
 

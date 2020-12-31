@@ -1,26 +1,29 @@
 ######  GENERAL  ######
 from ToolBox import compress
-from DBManager import DBManager
+from DatabaseManager import DatabaseManager
 
 ######  LOGGING  ######
 from ProcessLogger import ProcessLogger
 
 class AnalysisManager:
-    def __init__(self, data_path):
+    def __init__(self, data_path, chromosomes, snps_to_exclude=None):
         self.__logger = ProcessLogger("__ResultManager__")
-        self.__dbm = DBManager(data_path)
-        self.__chromosomes = []
+        self.__dbm = DatabaseManager(data_path)
+        self.__chromosomes = chromosomes
         self.__seeks = {}
-        self.__covariates = self.__dbm.get_data("covariates")
+        self.__covariates = self.__dbm.get("covariates")
 
-    def prepare_data(self, chromosomes, snps_to_exclude=None):
-        for c in chromosomes:
-            seeks = self.__dbm.get("variants_chr" + str(c),
-                                   columns=["seek"],
-                                   predicate="id not in " + str(tuple(snps_to_exclude[str(c)])) if snps_to_exclude else None)["seek"].to_list()
+        self.__prepare_data(snps_to_exclude)
+
+    def __prepare_data(self, snps_to_exclude):
+        for c in self.__chromosomes:
+            seeks = self.__dbm.get(
+                "variants_chr" + str(c),
+                columns=["seek"],
+                predicate="id not in " + str(tuple(snps_to_exclude)) if snps_to_exclude else None
+            )["seek"].to_list()
             if len(seeks) > 0:
-                self.__chromosomes.append(str(c))
-                self.__seeks[str(c)] = (0, seeks) # 0 is where to start in the list when returning batches
+                self.__seeks[str(c)] = seeks
 
     def get_covariates(self):
         return self.__covariates
@@ -28,21 +31,20 @@ class AnalysisManager:
     def get_batch(self, size):
         if len(self.__chromosomes) == 0:
             # No more data to analyse, so send stop signal to workers
-            return compress([])
+            return compress({"chr": -1, "data": []})
 
-        i, seeks = self.__seeks[str(self.__chromosomes[0])]
-        batch = seeks[i:i+size]
-        self.__seeks[str(self.__chromosomes[0])] = (i+size, seeks)
+        seeks = self.__seeks[str(self.__chromosomes[0])]
+        batch = seeks[:size]
+        self.__seeks[str(self.__chromosomes[0])] = seeks[size:]
 
         if len(batch) == 0:
             # Remove first chromosome as no more data is available for that one
             self.__chromosomes = self.__chromosomes[1:]
             return self.get_batch(size)
 
-        batch = {"chromosome": self.__chromosomes[0], "data": batch}
+        batch = {"chr": self.__chromosomes[0], "data": batch}
 
         # Rotate list of chromosomes
-        self.__chromosomes = self.__chromosomes[1:] + self.__chromosomes[0]
+        self.__chromosomes = self.__chromosomes[1:] + self.__chromosomes[:1]
 
         return compress(batch)
-

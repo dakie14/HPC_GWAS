@@ -10,8 +10,8 @@ from multiprocessing import Lock
 ######  LOGGING  ######
 from ProcessLogger import ProcessLogger
 
-# The DBManager takes care of interfacing with the sqlite3 database while making sure the access is handled in a threadsafe manner
-class DBManager:
+# The DatabaseManager takes care of interfacing with the sqlite3 database while making sure the access is handled in a threadsafe manner
+class DatabaseManager:
     def __init__(self, data_path, verbose=False):
         self.__verbose = verbose
         self.__db_lock = Lock()
@@ -39,19 +39,21 @@ class DBManager:
 
     def get(self, table, columns=None, predicate=None):
         self.__db_lock.acquire()
-
         _columns = "*"
         if columns:
             _columns = ""
-            for col in columns:
+            for col in columns[:-1]:
                 _columns += col + ","
-
+            _columns += columns[-1]
         _predicate = "" if not predicate else " where " + predicate
+        try:
+            data = pd.read_sql(
+                "select " + _columns + " from " + table + _predicate,
+                con=sqlite3.connect(self.__data_path)
+            )
+        except pd.io.sql.DatabaseError:
+            data = pd.DataFrame({})
 
-        data = pd.read_sql(
-            "select " + _columns + " from " + table + predicate,
-            con=sqlite3.connect(self.__data_path)
-        )
         self.__db_lock.release()
         return data
 

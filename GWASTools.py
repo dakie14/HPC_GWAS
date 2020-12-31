@@ -1,11 +1,12 @@
 ######  GENERAL  ######
 import pandas as pd
-import time
 from functools import partial
-import enum
+from itertools import chain
 
 ######  DATA_READERS  ######
-from PyBGEN import PyBGEN, GeneticModel
+from PyBGEN import PyBGEN
+from Enumerators import Model as gm
+from Enumerators import Format, Family
 
 ######  LOGGER  ######
 from ProcessLogger import ProcessLogger
@@ -17,103 +18,148 @@ from multiprocessing import Pool, cpu_count
 import statsmodels.api as sm
 from patsy import dmatrices
 
-class DataFormat(enum.Enum):
-    BGEN = 0
+logger = ProcessLogger("h")
 
-class RegressionFamily(enum.Enum):
-    Binomial = sm.families.Binomial()
-
-class BGENData:
-    def __init__(self, path, genetic_model, samples):
-        self.__path = path
+class GenotypeData(object):
+    def __init__(self, path, data_format, seeks=[], genetic_model=gm.Additive, samples=None):
         self.__samples = samples
-        if genetic_model.lower() == "additive":
-            self.__genetic_model = GeneticModel.Additive
-        elif genetic_model.lower() == "dominant":
-            self.__genetic_model = GeneticModel.Dominant
-        elif genetic_model.lower() == "recessive":
-            self.__genetic_model = GeneticModel.Recessive
+        self.__data_format = data_format
+        self._genetic_model = genetic_model
+        self.__path = path
+        self.__seeks = seeks
+        self.__data_iter = None
 
-    def read(self, seeks):
-        bgen_iter = PyBGEN(
-            self.__path,
+    def __open_bgen(self, path, genetic_model, seeks):
+        return PyBGEN(
+            path,
             _skip_index=True,
-            genetic_model=self.__genetic_model
+            genetic_model=genetic_model
         ).iter_seeks(seeks)
 
-        for info, dosage in bgen_iter:
-            snp_id = str(int(info.chrom)) + ":" + str(int(info.pos)) + "_" + str(info.a1) + "_" + str(info.a2)
-            df = pd.DataFrame({'id': self.__samples, 'dosage': dosage})
-            yield snp_id, df
+    def get_iterator(self):
+        if self.__data_format == Format.BGEN:
+            if not self.__data_iter:
+                self.__data_iter = self.__open_bgen(self.__path, self._genetic_model, self.__seeks)
 
-def __extract(snp_id, result):
+            for info, dosage in self.__data_iter:
+                snp_id = str(int(info.chrom)) + ":" + str(int(info.pos)) + "_" + str(info.a1) + "_" + str(info.a2)
+                df = pd.DataFrame({'id': self.__samples, 'dosage': dosage})
+                yield snp_id, df
+        else:
+            self.__data_iter = None
 
-    summary = result.summary()
-    extracted_result = {}
+class RegressionModel:
 
-    # First table - contain general statistics and data about the regression
-    tbl_1 = pd.read_html(summary.tables[0].as_html())[0]
-    tbl_1_dict = {}
-    for i in range(0, 4, 2):
-        columns = tbl_1[i].tolist()
-        data = tbl_1[i + 1].tolist()
-        for col_idx in range(len(columns)):
-            if columns[col_idx] != columns[col_idx]:
-                continue
+    def get_info(self, result):
+        summary = result.summary()
 
-            col = columns[col_idx].replace(":", "")
-            if not [
-                "Dep. Variable",
-                "Time",
-                "Date",
-                "No. Iterations",
-                "No. Observations",
-                "Df Residuals",
-                "Df Model",
-                "Scale",
-                "Log-Likelihood",
-                "Deviance",
-                "Pearson chi2"
-            ].__contains__(col):
-                continue
+        # First table - contain general statistics and data about the regression
+        tbl_1 = pd.read_html(summary.tables[0].as_html())[0]
+        dict = {}
+        for i in range(0, 4, 2):
+            columns = tbl_1[i].tolist()
+            data = tbl_1[i + 1].tolist()
+            for col_idx in range(len(columns)):
+                if columns[col_idx] != columns[col_idx]:
+                    continue
 
-            value = data[col_idx]
-            if col == "Dep. Variable":
-                value = value.strip("[]").replace("'", "")
-            if col == "No. Iterations" or col == "No. Observations":
-                value = int(value)
-            tbl_1_dict[col.replace(".", "").replace(" ", "_").lower()] = [value]
+                col = columns[col_idx].replace(":", "")
+                if not [
+                    "Dep. Variable",
+                    "Time",
+                    "Date",
+                    "No. Iterations",
+                    "No. Observations",
+                    "Df Residuals",
+                    "Df Model",
+                    "Scale",
+                    "Log-Likelihood",
+                    "Deviance",
+                    "Pearson chi2"
+                ].__contains__(col):
+                    continue
 
-    df = pd.DataFrame(tbl_1_dict)
-    df["id"] = [snp_id]
+                value = data[col_idx]
+                if col == "Dep. Variable":
+                    value = value.strip("[]").replace("'", "")
+                if col == "No. Iterations" or col == "No. Observations":
+                    value = int(value)
+                dict[col.replace(".", "").replace(" ", "_").lower()] = [value]
 
-    extracted_result["reg_details"] = df
+        return pd.DataFrame(dict)
 
-    tbl_2_vars = pd.read_html(
-        summary.tables[1].as_html(),
-        header=0,
-        index_col=0
-    )[0]
+    def get_results(self, result):
+        summary = result.summary()
+        df = pd.read_html(
+            summary.tables[1].as_html(),
+            header=0,
+            index_col=0
+        )[0]
 
-    tbl_2_vars.columns = [col.replace(".", "").replace(" ", "_").lower() for col in tbl_2_vars.columns]
-
-    for var in list(tbl_2_vars.index):
-        df = tbl_2_vars.loc[[var]]
-        df.rename(columns={"p>|z|": "p", "[0025": "low_conf_int", "0975]": "high_conf_int"}, inplace=True)
-        df["id"] = [snp_id]
-        df["p"] = result.pvalues[var]
-        df["coef"] = result.params["dosage"]
+        df.columns = [col.replace(".", "").replace(" ", "_").lower() for col in df.columns]
+        df.rename(columns={"p>|z|": "p", "[0025": "5_conf_int", "0975]": "95_conf_int"}, inplace=True)
         conf_int = result.conf_int(alpha=0.05)
-        df["low_conf_int"] = conf_int[0]
-        df["high_conf_int"] = conf_int[1]
-        extracted_result[var] = df
+        df["5_conf_int"] = conf_int[0]
+        df["95_conf_int"] = conf_int[1]
+        df["p"] = result.pvalues
 
-    return extracted_result
+        return df
 
-def __glm_fit(dataObject, covariates, model, family, seeks):
-    batch_results = {}
-    data_iter = dataObject.read(seeks)
-    for snp_id, dosage_data in data_iter:
+class GeneralisedLinearModel(RegressionModel):
+
+    def __init__(self, dep, predictors, family):
+        self.__model = sm.GLM(dep, predictors, family=family)
+        self.__info = None
+        self.__fitted_model = None
+
+    def fit(self):
+        result = self.__model.fit()
+        self.__info = self.get_info(result)
+        self.__fitted_model = self.get_results(result)
+        return self
+
+    def info(self):
+        return self.__info.copy()
+
+    def fitted_model(self):
+        return self.__fitted_model.copy()
+
+class ParallelResult:
+    def __init__(self):
+        self.__result = {}
+
+    def add(self, _id, model):
+        info = model.info()
+        info["id"] = [_id]
+        if "info" not in self.__result:
+            info.reset_index(drop=True, inplace=True)
+            self.__result["info"] = info
+        else:
+            self.__result["info"] = self.__result["info"].append(info, ignore_index=True)
+
+        result = model.fitted_model()
+        result["id"] = [_id for _ in range(len(result))]
+        for idx in result.index:
+            df = result[idx:idx]
+            df.reset_index(drop=True, inplace=True)
+            if idx not in self.__result:
+                self.__result[idx] = df
+            else:
+                self.__result[idx] = self.__result[idx].append(result[idx:idx], ignore_index=True)
+
+    def combine(self, results):
+        for _id, result in list(chain.from_iterable(results)):
+            self.add(_id, result)
+
+    def get(self, identifier):
+        return self.__result[identifier]
+
+    def as_dict(self):
+        return self.__result
+
+def __glm_fit(covariates, model, family, data):
+    batch_results = []
+    for _id, dosage_data in data.get_iterator():
         df = pd.merge(dosage_data,
                       covariates, on="id", how="inner")
         df = df[df["dosage"].notnull()]
@@ -122,45 +168,31 @@ def __glm_fit(dataObject, covariates, model, family, seeks):
                          data=df,
                          return_type='dataframe')
 
-        model = sm.GLM(y, X, family=family)
-        result = model.fit()
-        extracted = __extract(snp_id, result)
-
-        for key in list(extracted):
-            if key not in list(batch_results):
-                batch_results[key] = extracted[key]
-            else:
-                batch_results[key] = batch_results[key].append(extracted[key])
+        glm = GeneralisedLinearModel(y, X, sm.families.Binomial() if family == Family.Binomial else None)
+        glm.fit()
+        batch_results.append((_id, glm))
 
     return batch_results
 
-def parallel_glm(model, data_path, seeks, format, covariates, family, cores=cpu_count(), samples=None, genetic_model="additive"):
-
-    if format == DataFormat.BGEN:
-        data = BGENData(data_path, genetic_model, samples)
+def parallel_glm(model, data_path, format, covariates, family, seeks=[], cores=cpu_count(), samples=None, genetic_model=gm.Additive):
 
     pool = Pool(cores)
     analysis = partial(
         __glm_fit,
-        data,
         covariates,
         model,
         family
     )
+    batches = [seeks[_::cores] for _ in range(cores)]
 
     results = pool.map(
         analysis,
-        [seeks[_::cores] for _ in range(cores)]
+        [GenotypeData(data_path, format, seeks=batch, genetic_model=genetic_model, samples=samples) for batch in batches]
     )
 
-    combined_result = {}
-    for result in results:
-        for key in list(result):
-            if key not in list(combined_result):
-                combined_result[key] = result[key]
-            else:
-                combined_result[key] = combined_result[key].append(result[key])
-    return combined_result
+    parallel_result = ParallelResult()
+    parallel_result.combine(results)
+    return parallel_result
 
 
 
