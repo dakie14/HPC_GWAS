@@ -6,16 +6,15 @@ from DatabaseManager import DatabaseManager
 from ProcessLogger import ProcessLogger
 
 class AnalysisManager:
-    def __init__(self, data_path, chromosomes, snps_to_exclude=None):
+    def __init__(self, data_path):
         self.__logger = ProcessLogger("__ResultManager__")
         self.__dbm = DatabaseManager(data_path)
         self.__chromosomes = []
         self.__seeks = {}
         self.__buffered_data = {}
 
-        self.__prepare_data(snps_to_exclude, chromosomes)
-
-    def __prepare_data(self, snps_to_exclude, chromosomes):
+    def prepare_data(self, chromosomes, snps_to_exclude={}):
+        snp_count = 0
         for c in chromosomes:
             seeks = self.__dbm.get(
                 "variants_chr" + str(c),
@@ -25,6 +24,9 @@ class AnalysisManager:
             if len(seeks) > 0:
                 self.__seeks[str(c)] = seeks
                 self.__chromosomes.append(c)
+                snp_count += len(seeks)
+
+        return snp_count
 
     def get_supplementary_data(self, name):
         if name not in self.__buffered_data:
