@@ -37,7 +37,7 @@ def run(host, port, batch_size, model, bgen_path, gm, cores, sample_path, covar_
         _chr = batch["chr"]
         seeks = batch["data"]
 
-        data_path = bgen_path + "/chr" + str(_chr) + ".bgen"
+        data_path = bgen_path + "/ukb_imp_chr" + str(_chr) + "_v3.bgen"
 
         result = parallel_glm(
             model,
