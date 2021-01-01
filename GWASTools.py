@@ -2,6 +2,8 @@
 import pandas as pd
 from functools import partial
 from itertools import chain
+import os
+import signal
 
 ######  DATA_READERS  ######
 from PyBGEN import PyBGEN
@@ -186,14 +188,18 @@ def parallel_glm(reg_model, data_path, covariates, family, seeks, cores=cpu_coun
         reg_model,
         family
     )
-    batches = [seeks[_::cores] for _ in range(cores)]
 
-    results = pool.map(
-        analysis,
-        [GenotypeData(data_path, batch, genetic_model=genetic_model, samples=samples) for batch in batches]
-    )
-
-    parallel_result.combine(results)
+    try:
+        results = pool.map(
+            analysis,
+            [GenotypeData(data_path, batch, genetic_model=genetic_model, samples=samples) for batch in [seeks[_::cores] for _ in range(cores)]]
+        )
+    except KeyboardInterrupt:
+        pool.terminate()
+    else:
+        pool.close()
+        pool.join()
+        parallel_result.combine(results)
     return parallel_result
 
 

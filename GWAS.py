@@ -34,17 +34,14 @@ def run(host, port, batch_size, model, bgen_path, gm, cores, sample_path, covar_
         if batch["chr"] == -1:
             break
 
-        _chr = batch["chr"]
-        seeks = batch["data"]
-
-        data_path = bgen_path + "/ukb_imp_chr" + str(_chr) + "_v3.bgen"
+        data_path = bgen_path + "/ukb_imp_chr" + str(batch["chr"]) + "_v3.bgen"
 
         result = parallel_glm(
             model,
             data_path,
             covariates,
             fam,
-            seeks,
+            batch["data"],
             samples=samples,
             cores=cores,
             genetic_model=gm
