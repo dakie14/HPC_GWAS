@@ -16,19 +16,29 @@ class DataManager:
         requests.get(self.__server_url + "/status")
 
     def get_supplementary_data(self, name):
-        return pd.read_json(
-            requests.get(self.__server_url + "/data", params={"name": name}).text,
-            orient="records"
-        )
+        try:
+            r = requests.get(self.__server_url + "/data", params={"name": name})
+            return pd.read_json(
+                r.text,
+                orient="records"
+            )
+        except ConnectionError:
+            time.sleep(5)
+            return self.get_supplementary_data(name)
 
     def get_batch(self, size):
-        r = requests.get(self.__server_url + "/batch", params={"batch_size": size})
-        if r.status_code != 200:
+        try:
+            r = requests.get(self.__server_url + "/batch", params={"batch_size": size})
+        except ConnectionError:
             time.sleep(5)
             return self.get_batch(size)
+        else:
+            if r.status_code != 200:
+                time.sleep(5)
+                return self.get_batch(size)
 
-        data = r.content
-        return decompress(data)
+            data = r.content
+            return decompress(data)
 
     def store_result(self, results):
         data = {}
@@ -37,10 +47,14 @@ class DataManager:
 
         compressed = compress(data)
 
-        # Keep trying to post results until server accepts
-        while requests.post(
-                self.__server_url + "/result",
-                data=compressed
-        ).status_code != 200:
-            time.sleep(5)
-            continue
+        while True:
+            try:
+                r = requests.post(self.__server_url + "/result", data=compressed)
+            except ConnectionError:
+                time.sleep(5)
+                continue
+            else:
+                # Keep trying to post results until server accepts
+                if r.status_code != 200:
+                    time.sleep(5)
+                    continue
