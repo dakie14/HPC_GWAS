@@ -7,9 +7,9 @@ from ProcessLogger import ProcessLogger
 
 logger = ProcessLogger("GWAS")
 
-def run(batch_size, model, bgen_path, gm, cores, sample_path, covar_path, family):
+def run(host, port, batch_size, model, bgen_path, gm, cores, sample_path, covar_path, family):
     total_time = time.time()
-    manager = DataManager()
+    manager = DataManager(host=host, port=port)
 
     if not covar_path:
         covariates = manager.get_supplementary_data("covariates")

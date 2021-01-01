@@ -9,7 +9,7 @@ def parse_input():
     parser = argparse.ArgumentParser(description='main_input')
     subparsers = parser.add_subparsers(dest='type', help='sub-command help')
     server_group = subparsers.add_parser('server', help='Arguments specifically for initialising server')
-    gwas_group = subparsers.add_parser('gwas', help='Arguments specifically for initialising a gwas')
+    assoc_group = subparsers.add_parser('assoc', help='Arguments specifically for initialising a gwas')
 
     ########## Arguments for server ##########
     server_group.add_argument("--host",
@@ -40,42 +40,52 @@ def parse_input():
 
     ########## Arguments for gwas ##########
 
-    gwas_group.add_argument("--bs",
+    assoc_group.add_argument("--host",
+                              help="Specify url for master. Defaults to 0.0.0.0",
+                              type=str,
+                              default="0.0.0.0")
+
+    assoc_group.add_argument("--port",
+                              help="Specify port for master. Defaults to 5000",
+                              type=int,
+                              default=5000)
+
+    assoc_group.add_argument("-bs", "--batch_size",
                         help="Specify how many snps to request from server",
                         type=int,
                         default=cpu_count() * 100)
 
-    gwas_group.add_argument("--model",
+    assoc_group.add_argument("--model",
                         help="Specify regression model",
                         type=str,
                         required=True)
 
-    gwas_group.add_argument("--bgen",
+    assoc_group.add_argument("--bgen",
                         help="Specify path to folder containing bgen files to use in analysis. Files should be names 'chr{chromosome}.bgen'",
                         type=str,
                         required=True)
 
-    gwas_group.add_argument("--gm",
+    assoc_group.add_argument("-gm", "--genetic_model",
                         help="Specify the genetic model to use; additive, dominant or recessive. Default is additive",
                         type=str,
                         default="additive")
 
-    gwas_group.add_argument("-c", "--cores",
+    assoc_group.add_argument("-c", "--cores",
                         help="Specify number of cores to use. Default is the number of cores available",
                         type=int,
                         default=cpu_count())
 
-    gwas_group.add_argument("-s", "--sample",
+    assoc_group.add_argument("-s", "--sample",
                         help="Specify path to sample file",
                         type=str,
                         default="")
 
-    gwas_group.add_argument("-cov", "--covar",
+    assoc_group.add_argument("-covar", "--covariates",
                         help="Specify path to covariates file",
                         type=str,
                         default="")
 
-    gwas_group.add_argument("--family",
+    assoc_group.add_argument("--family",
                             help="Specify regression family. Default is the binomial family",
                             type=str,
                             default="binomial")
@@ -106,7 +116,9 @@ if __name__ == "__main__":
 
         Webservice.init_service(host, port, service_manager, verbose=True)
 
-    if args.type == "gwas":
+    if args.type == "assoc":
+        host = args.host
+        port = args.port
         batch_size = args.bs
         model = args.model
         bgen_path = args.bgen
@@ -118,6 +130,8 @@ if __name__ == "__main__":
 
         import GWAS
         GWAS.run(
+            host,
+            port,
             batch_size,
             model,
             bgen_path,
