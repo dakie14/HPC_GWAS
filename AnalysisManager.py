@@ -16,7 +16,8 @@ class AnalysisManager:
         self.__prepare_data(snps_to_exclude)
 
     def __prepare_data(self, snps_to_exclude):
-        for c in self.__chromosomes:
+        chromosomes = self.__chromosomes.copy()
+        for c in chromosomes:
             seeks = self.__dbm.get(
                 "variants_chr" + str(c),
                 columns=["seek"],
@@ -24,6 +25,8 @@ class AnalysisManager:
             )["seek"].to_list()
             if len(seeks) > 0:
                 self.__seeks[str(c)] = seeks
+            else:
+                self.__chromosomes.remove(c)
 
     def get_supplementary_data(self, name):
         if name not in self.__buffered_data:
