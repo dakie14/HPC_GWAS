@@ -16,29 +16,39 @@ class DataManager:
         requests.get(self.__server_url + "/status")
 
     def get_supplementary_data(self, name):
-        try:
-            r = requests.get(self.__server_url + "/data", params={"name": name})
-            return pd.read_json(
-                r.text,
-                orient="records"
-            )
-        except requests.exceptions.ConnectionError:
-            time.sleep(5)
-            return self.get_supplementary_data(name)
+        iterations = 0
+        while iterations < 30:
+            iterations += 1
+            try:
+                r = requests.get(self.__server_url + "/data", params={"name": name})
+                return pd.read_json(
+                    r.text,
+                    orient="records"
+                )
+            except requests.exceptions.ConnectionError:
+                time.sleep(1)
+                continue
+
+        self.__logger.info("Error: Could not connect to host")
+        exit(0)
+
 
     def get_batch(self, size):
-        try:
-            r = requests.get(self.__server_url + "/batch", params={"batch_size": size})
-        except requests.exceptions.ConnectionError:
-            time.sleep(5)
-            return self.get_batch(size)
-        else:
-            if r.status_code != 200:
-                time.sleep(5)
-                return self.get_batch(size)
+        iterations = 0
+        while iterations < 30:
+            iterations += 1
+            try:
+                r = requests.get(self.__server_url + "/batch", params={"batch_size": size})
+            except requests.exceptions.ConnectionError:
+                time.sleep(1)
+                continue
+            else:
+                if r.status_code != 200:
+                    time.sleep(1)
+                    continue
 
-            data = r.content
-            return decompress(data)
+                data = r.content
+                return decompress(data)
 
     def store_result(self, results):
         data = {}
@@ -47,14 +57,16 @@ class DataManager:
 
         compressed = compress(data)
 
-        while True:
+        iterations = 0
+        while iterations < 60:
+            iterations += 1
             try:
                 r = requests.post(self.__server_url + "/result", data=compressed)
             except requests.exceptions.ConnectionError:
-                time.sleep(5)
+                time.sleep(1)
                 continue
             else:
                 # Keep trying to post results until server accepts
                 if r.status_code != 200:
-                    time.sleep(5)
+                    time.sleep(1)
                     continue
