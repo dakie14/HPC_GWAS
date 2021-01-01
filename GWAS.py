@@ -7,7 +7,7 @@ from ProcessLogger import ProcessLogger
 
 logger = ProcessLogger("GWAS")
 
-def run(batch_size, model, bgen_path, gm, cores, sample_path, covar_path):
+def run(batch_size, model, bgen_path, gm, cores, sample_path, covar_path, family):
     total_time = time.time()
     manager = DataManager()
 
@@ -20,6 +20,12 @@ def run(batch_size, model, bgen_path, gm, cores, sample_path, covar_path):
         samples = manager.get_supplementary_data("samples")
     else:
         samples = pd.read_csv(sample_path, header=0)["id"].to_list()
+
+    if family == "binomial":
+        fam = Family.Binomial
+    else:
+        print("Error: family (" + family + ") not recognised")
+        exit(0)
 
     while True:
         overall_batch_time = time.time()
@@ -37,7 +43,7 @@ def run(batch_size, model, bgen_path, gm, cores, sample_path, covar_path):
             model,
             data_path,
             covariates,
-            Family.Binomial,
+            fam,
             seeks,
             samples=samples,
             cores=cores,

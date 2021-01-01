@@ -75,6 +75,11 @@ def parse_input():
                         type=str,
                         default="")
 
+    gwas_group.add_argument("--family",
+                            help="Specify regression family. Default is the binomial family",
+                            type=str,
+                            default="binomial")
+
 
     return parser.parse_args()
 
@@ -109,6 +114,7 @@ if __name__ == "__main__":
         cores = args.cores
         sample_path = args.sample
         covar_path = args.covar
+        fam = args.family
 
         import GWAS
         GWAS.run(
@@ -118,5 +124,6 @@ if __name__ == "__main__":
             gm,
             cores,
             sample_path,
-            covar_path
+            covar_path,
+            fam
         )

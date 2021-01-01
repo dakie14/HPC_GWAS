@@ -1,5 +1,4 @@
 import enum
-import statsmodels.api as sm
 
 class Model(enum.Enum):
     Additive = 0
