@@ -30,12 +30,14 @@ def run(host, port, batch_size, model, bgen_path, gm, cores, sample_path, covar_
     while True:
         overall_batch_time = time.time()
 
+        print("Requesting batch..")
         batch = manager.get_batch(batch_size)
         if batch["chr"] == -1:
             break
 
         data_path = bgen_path + "/ukb_imp_chr" + str(batch["chr"]) + "_v3.bgen"
 
+        print("Running analysis..")
         result = parallel_glm(
             model,
             data_path,
@@ -47,6 +49,7 @@ def run(host, port, batch_size, model, bgen_path, gm, cores, sample_path, covar_
             genetic_model=gm
         )
 
+        print("Posting result..")
         manager.store_result(result.as_dict())
         logger.info("--- (batch) %s seconds ---" % (time.time() - overall_batch_time))
 
