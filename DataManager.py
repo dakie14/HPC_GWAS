@@ -26,6 +26,8 @@ class DataManager:
             except requests.exceptions.ConnectionError:
                 time.sleep(1)
                 continue
+            else:
+                break
 
 
     def get_supplementary_data(self, name):
