@@ -22,14 +22,14 @@ class DataManager:
                 r.text,
                 orient="records"
             )
-        except ConnectionError:
+        except requests.exceptions.ConnectionError:
             time.sleep(5)
             return self.get_supplementary_data(name)
 
     def get_batch(self, size):
         try:
             r = requests.get(self.__server_url + "/batch", params={"batch_size": size})
-        except ConnectionError:
+        except requests.exceptions.ConnectionError:
             time.sleep(5)
             return self.get_batch(size)
         else:
@@ -50,7 +50,7 @@ class DataManager:
         while True:
             try:
                 r = requests.post(self.__server_url + "/result", data=compressed)
-            except ConnectionError:
+            except requests.exceptions.ConnectionError:
                 time.sleep(5)
                 continue
             else:

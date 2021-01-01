@@ -9,14 +9,13 @@ class AnalysisManager:
     def __init__(self, data_path, chromosomes, snps_to_exclude=None):
         self.__logger = ProcessLogger("__ResultManager__")
         self.__dbm = DatabaseManager(data_path)
-        self.__chromosomes = chromosomes
+        self.__chromosomes = []
         self.__seeks = {}
         self.__buffered_data = {}
 
         self.__prepare_data(snps_to_exclude)
 
-    def __prepare_data(self, snps_to_exclude):
-        chromosomes = self.__chromosomes.copy()
+    def __prepare_data(self, snps_to_exclude, chromosomes):
         for c in chromosomes:
             seeks = self.__dbm.get(
                 "variants_chr" + str(c),
@@ -25,8 +24,7 @@ class AnalysisManager:
             )["seek"].to_list()
             if len(seeks) > 0:
                 self.__seeks[str(c)] = seeks
-            else:
-                self.__chromosomes.remove(c)
+                self.__chromosomes.append(c)
 
     def get_supplementary_data(self, name):
         if name not in self.__buffered_data:
