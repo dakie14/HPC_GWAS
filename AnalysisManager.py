@@ -13,7 +13,7 @@ class AnalysisManager:
         self.__seeks = {}
         self.__buffered_data = {}
 
-        self.__prepare_data(snps_to_exclude)
+        self.__prepare_data(snps_to_exclude, chromosomes)
 
     def __prepare_data(self, snps_to_exclude, chromosomes):
         for c in chromosomes:
