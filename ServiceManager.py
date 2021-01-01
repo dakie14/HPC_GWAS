@@ -4,7 +4,7 @@ from ResultManager import ResultManager
 class ServiceManager:
     def __init__(self, input, output, chromosomes, verbose=False):
         self.result_manager = ResultManager(output)
-        exclude = self.result_manager.get_stored_ids()
+        exclude = self.result_manager.get_stored_ids(chromosomes)
         self.analysis_manager = AnalysisManager(input, chromosomes, snps_to_exclude=exclude)
 
     def get_batch(self, size):
