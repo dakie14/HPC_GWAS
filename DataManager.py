@@ -13,7 +13,20 @@ class DataManager:
     def __init__(self, host="0.0.0.0", port=5000):
         self.__server_url = "http://" + host + ":" + str(port)
         self.__logger = ProcessLogger("__DataManager__")
-        requests.get(self.__server_url + "/status")
+
+        iterations = 0
+        while True:
+            if iterations >= 30:
+                self.__logger.info("Error: Could not connect to host")
+                exit(0)
+
+            iterations += 1
+            try:
+                requests.get(self.__server_url + "/status")
+            except requests.exceptions.ConnectionError:
+                time.sleep(1)
+                continue
+
 
     def get_supplementary_data(self, name):
         iterations = 0
@@ -50,6 +63,9 @@ class DataManager:
                 data = r.content
                 return decompress(data)
 
+        self.__logger.info("Error: Could not connect to host")
+        exit(0)
+
     def store_result(self, results):
         data = {}
         for key in list(results):
@@ -58,7 +74,10 @@ class DataManager:
         compressed = compress(data)
 
         iterations = 0
-        while iterations < 60:
+        while True:
+            if iterations >= 60:
+                self.__logger.info("Error: Could not connect to host")
+                exit(0)
             iterations += 1
             try:
                 r = requests.post(self.__server_url + "/result", data=compressed)
@@ -70,3 +89,7 @@ class DataManager:
                 if r.status_code != 200:
                     time.sleep(1)
                     continue
+                else:
+                    return
+
+
