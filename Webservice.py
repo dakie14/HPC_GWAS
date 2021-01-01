@@ -61,6 +61,9 @@ def init_service(host, port, service_manager, verbose=False):
     if not verbose:
         quiet()
 
+    if verbose:
+        logger.info("Starting webservice..")
+
     global manager
     manager = service_manager
 
