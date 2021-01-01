@@ -1,12 +1,15 @@
 import argparse
 import os
 import uuid
+from multiprocessing import cpu_count
+
 
 def parse_input():
     #Create parsers
     parser = argparse.ArgumentParser(description='main_input')
     subparsers = parser.add_subparsers(dest='type', help='sub-command help')
     server_group = subparsers.add_parser('server', help='Arguments specifically for initialising server')
+    gwas_group = subparsers.add_parser('gwas', help='Arguments specifically for initialising a gwas')
 
     ########## Arguments for server ##########
     server_group.add_argument("--host",
@@ -35,6 +38,43 @@ def parse_input():
                               nargs='+',
                               default=[i for i in range(1, 23)])
 
+    ########## Arguments for gwas ##########
+
+    gwas_group.add_argument("--bs",
+                        help="Specify how many snps to request from server",
+                        type=int,
+                        default=cpu_count() * 100)
+
+    gwas_group.add_argument("--model",
+                        help="Specify regression model",
+                        type=str,
+                        required=True)
+
+    gwas_group.add_argument("--bgen",
+                        help="Specify path to folder containing bgen files to use in analysis. Files should be names 'chr{chromosome}.bgen'",
+                        type=str,
+                        required=True)
+
+    gwas_group.add_argument("--gm",
+                        help="Specify the genetic model to use; additive, dominant or recessive. Default is additive",
+                        type=str,
+                        default="additive")
+
+    gwas_group.add_argument("-c", "--cores",
+                        help="Specify number of cores to use. Default is the number of cores available",
+                        type=int,
+                        default=cpu_count())
+
+    gwas_group.add_argument("-s", "--sample",
+                        help="Specify path to sample file",
+                        type=str,
+                        default="")
+
+    gwas_group.add_argument("-cov", "--covar",
+                        help="Specify path to covariates file",
+                        type=str,
+                        default="")
+
 
     return parser.parse_args()
 
@@ -60,3 +100,23 @@ if __name__ == "__main__":
         )
 
         Webservice.init_service(host, port, service_manager, verbose=True)
+
+    if args.type == "gwas":
+        batch_size = args.bs
+        model = args.model
+        bgen_path = args.bgen
+        gm = args.gm
+        cores = args.cores
+        sample_path = args.sample
+        covar_path = args.covar
+
+        import GWAS
+        GWAS.run(
+            batch_size,
+            model,
+            bgen_path,
+            gm,
+            cores,
+            sample_path,
+            covar_path
+        )

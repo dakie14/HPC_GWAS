@@ -31,7 +31,7 @@ class AnalysisManager:
         return self.__buffered_data[name]
 
     def get_batch(self, size):
-        if len(self.__chromosomes) == 0:
+        if len(self.__chromosomes) == 0 or size == 0:
             # No more data to analyse, so send stop signal to workers
             return compress({"chr": -1, "data": []})
 
