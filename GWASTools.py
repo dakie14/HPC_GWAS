@@ -199,6 +199,7 @@ def parallel_glm(reg_model, data_path, covariates, family, seeks, cores=cpu_coun
         )
     except KeyboardInterrupt:
         pool.terminate()
+        exit(0)
     else:
         pool.close()
         pool.join()
