@@ -14,11 +14,12 @@ from multiprocessing import Process, Queue
 class ResultManager:
     def __init__(self, output_path, verbose=False):
         self.__logger = ProcessLogger("__ResultManager__")
-
-        q = Queue()
         self.__output_path = output_path
+
+    def run(self, snps_to_run):
+        q = Queue()
         self.__result_handler = Process(target=self.process_results,
-                                        args=(q, output_path))
+                                        args=(q, self.__output_path, snps_to_run))
         self.__result_handler.start()
         self.__queue = q
 
@@ -48,7 +49,7 @@ class ResultManager:
         self.__logger.info("Data ready")
         return entries
 
-    def process_results(self, q, output_path):
+    def process_results(self, q, output_path, total_snps):
         dbm = DatabaseManager(output_path)
         entries = self.__prepare_data(dbm)
 
@@ -59,7 +60,7 @@ class ResultManager:
 
             for key in list(data):
                 df = pd.read_json(data[key], orient="records")
-                self.__logger.info("Adding data for " + key + " to database (Status: " + str(entries + len(df)) + ")")
+                self.__logger.info("Adding data for " + key + " to database (Status: " + str(entries + len(df)) + " of " + str(total_snps) + ")")
                 dbm.add(df, key)
 
             entries += len(data["Intercept"])

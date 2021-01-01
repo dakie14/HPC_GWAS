@@ -6,7 +6,8 @@ class ServiceManager:
         self.result_manager = ResultManager(output)
         exclude = self.result_manager.get_stored_ids(chromosomes)
         self.analysis_manager = AnalysisManager(input)
-        snps_to_analyse = self.__prepare_data(chromosomes, snps_to_exclude=exclude)
+        snps_to_analyse = self.analysis_manager.prepare_data(chromosomes, snps_to_exclude=exclude)
+        self.result_manager.run(snps_to_analyse)
 
     def get_batch(self, size):
         return self.analysis_manager.get_batch(size)
