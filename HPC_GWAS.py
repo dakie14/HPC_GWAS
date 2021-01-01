@@ -119,13 +119,13 @@ if __name__ == "__main__":
     if args.type == "assoc":
         host = args.host
         port = args.port
-        batch_size = args.bs
+        batch_size = args.batch_size
         model = args.model
         bgen_path = args.bgen
-        gm = args.gm
+        gm = args.genetic_model
         cores = args.cores
         sample_path = args.sample
-        covar_path = args.covar
+        covar_path = args.covariates
         fam = args.family
 
         import GWAS
