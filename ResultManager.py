@@ -22,12 +22,14 @@ class ResultManager:
         self.__result_handler.start()
         self.__queue = q
 
-    def get_stored_ids(self):
+    def get_stored_ids(self, chromosomes):
         dbm = DatabaseManager(self.__output_path)
-        df = dbm.get("Intercept")
-        if len(df) > 0:
-            return df["id"].to_list()
-        return []
+        data = {}
+        for c in chromosomes:
+            df = dbm.get("Intercept")
+            if len(df) > 0:
+                data[c] = df["id"].to_list()
+        return data
 
     def __prepare_data(self, dbm):
         self.__logger.info("Preparing data..")

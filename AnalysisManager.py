@@ -20,7 +20,7 @@ class AnalysisManager:
             seeks = self.__dbm.get(
                 "variants_chr" + str(c),
                 columns=["seek"],
-                predicate="id not in " + str(tuple(snps_to_exclude)) if snps_to_exclude else None
+                predicate="id not in " + str(tuple(snps_to_exclude[c])) if c in snps_to_exclude else None
             )["seek"].to_list()
             if len(seeks) > 0:
                 self.__seeks[str(c)] = seeks
