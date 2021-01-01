@@ -181,7 +181,10 @@ def parallel_glm(reg_model, data_path, covariates, family, seeks, cores=cpu_coun
     if len(seeks) == 0:
         return parallel_result
 
+    original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
     pool = Pool(cores)
+    signal.signal(signal.SIGINT, original_sigint_handler)
+
     analysis = partial(
         __glm_fit,
         covariates,
